@@ -3,3 +3,4 @@
 
 
 支持cocoapods
+pod 'JJAutoScrollView'
