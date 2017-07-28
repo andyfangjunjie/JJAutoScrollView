@@ -40,6 +40,7 @@
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     
     self.bottomScrollView.JJPageControlPosition = JJPageControlPositionBottomRight;
+    self.bottomScrollView.currentPageIndicatorTintColor = [UIColor blueColor];
 }
 
 #pragma mark - 代理
