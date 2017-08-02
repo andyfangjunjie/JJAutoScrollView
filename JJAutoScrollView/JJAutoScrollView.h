@@ -11,7 +11,7 @@
  *
  *  轮播图 加定时器自动滚动，可设置时间间隔
  *
- *  此demo采用代理和block两种方式
+ *  此demo采用代理传值方式，支持代码创建和xib创建
  *
  ********************************
  */
@@ -74,12 +74,16 @@ typedef NS_ENUM(NSInteger, JJPageControlPosition) {
 
 @interface JJAutoScrollView : UIView
 
+/** 代理 */
+@property (nonatomic,weak) __weak id<JJAutoScrollViewDelegate>delegate;
+/** 数据源代理 */
+@property (nonatomic,weak) __weak id<JJAutoScrollViewDataSource>dataSource;
 
-#pragma mark - 公用
+#pragma mark - 属性
 /** 时间间隔 */
 @property (nonatomic,assign) NSTimeInterval animationDuration;
 /** 页码控制器的位置 */
-@property (nonatomic,assign) JJPageControlPosition JJPageControlPosition;
+@property (nonatomic,assign) JJPageControlPosition pageControlPosition;
 /** 页码控件隐藏 */
 @property (nonatomic,assign) BOOL pageControlHidden;
 #pragma mark - 页码控制(可修改)
@@ -88,42 +92,15 @@ typedef NS_ENUM(NSInteger, JJPageControlPosition) {
 /** 未选中颜色 */
 @property (nonatomic,strong) UIColor *pageIndicatorTintColor;
 
-
-
-#pragma mark - 传值方式
-
-/**
- * 1.代理传值
- */
-
-/** 代理 */
-@property (nonatomic,weak) __weak id<JJAutoScrollViewDelegate>delegate;
-/** 数据源代理 */
-@property (nonatomic,weak) __weak id<JJAutoScrollViewDataSource>dataSource;
-
-/**
- * 2.block传值
- */
-
-/** 
-   获取第pageIndex个位置的contentView
- *
- * 注意：必须写到numberOfPages之前
- */
-@property (nonatomic,strong) UIView *(^fetchContentViewAtIndex)(NSInteger pageIndex);
-/** 获取总个数 */
-@property (nonatomic,strong) NSInteger (^numberOfPages)(void);
-/** 点击了哪一个 */
-@property (nonatomic,strong) void (^didSelectContentViewAtIndex)(NSInteger pageIndex);
-
-
-
-
-
 @end
 
+#pragma mark - cell
+@interface JJAutoScrollViewCell : UICollectionViewCell
 
+/** 图片 */
+@property (nonatomic,strong) UIView *showView;
 
+@end
 
 
 

@@ -9,21 +9,22 @@
 #import "JJAutoScrollView.h"
 
 
-@interface JJAutoScrollView () <UIScrollViewDelegate>
+@interface JJAutoScrollView () <UICollectionViewDelegate,UICollectionViewDataSource>
 
-/** scrollView */
-@property (nonatomic,strong) UIScrollView *scrollView;
-/** 页码控件 */
+/** layout */
+@property (nonatomic,strong) UICollectionViewFlowLayout *layout;
+/** collectionView */
+@property (nonatomic,strong) UICollectionView *collectionView;
+/** 页码控制 */
 @property (nonatomic,strong) UIPageControl *pageControl;
-/** 页码 */
-@property (nonatomic,assign) NSInteger totalPagesCount;
-/** 当前页码 */
-@property (nonatomic,assign) NSInteger currentPageIndex;
-/** 存放三张数据源 */
-@property (nonatomic,strong) NSMutableArray *contentViews;
-
-/** 动画时间 */
+/** 定时器 */
 @property (nonatomic,strong) NSTimer *animationTimer;
+/** 总页码 */
+@property (nonatomic,assign) NSInteger totalPageCount;
+/** 乘数 */
+@property (nonatomic,assign) NSInteger multiplier;
+/** 数据源 */
+@property (nonatomic,strong) NSMutableArray *dataArray;
 
 @end
 
@@ -45,20 +46,25 @@
 }
 - (void)setup {
     self.autoresizesSubviews = YES;
-    [self addSubview:self.scrollView];
+    self.totalPageCount = 0;
+    self.animationDuration = 3.0;
+    [self addSubview:self.collectionView];
+    [self addSubview:self.pageControl];
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
     
-    self.scrollView.frame = self.bounds;
-    
+    self.layout.itemSize = self.bounds.size;
+    self.collectionView.collectionViewLayout = self.layout;
+    self.collectionView.frame = self.bounds;
+    //页码控制器
     CGFloat superViewWidth = CGRectGetWidth(self.frame);
     CGFloat superViewHeight = CGRectGetHeight(self.frame);
-    CGFloat width = _totalPagesCount * 18;
+    CGFloat width = self.totalPageCount * 18;
     CGFloat height = 20;
     CGFloat x = 0;
     CGFloat y = 0;
-    switch (self.JJPageControlPosition) {
+    switch (self.pageControlPosition) {
         case JJPageControlPositionBottomCenter:
         {
             x = (superViewWidth - width) / 2;
@@ -98,255 +104,212 @@
             break;
     }
     self.pageControl.frame = CGRectMake(x, y, width, height);
+    [self resumeTimer:self.animationTimer];
 }
-
-#pragma mark - getter
-
-//页码控件
+#pragma mark - 懒加载
+/** layout */
+- (UICollectionViewFlowLayout *)layout
+{
+    if(!_layout){
+        _layout = [[UICollectionViewFlowLayout alloc] init];
+        _layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+        _layout.itemSize = self.bounds.size;
+        _layout.minimumLineSpacing = 0;
+        _layout.minimumInteritemSpacing = 0;
+    }
+    return _layout;
+}
+/** collectionView */
+- (UICollectionView *)collectionView
+{
+    if(!_collectionView){
+        _collectionView = [[UICollectionView alloc] initWithFrame:self.bounds collectionViewLayout:self.layout];
+        _collectionView.backgroundColor = [UIColor clearColor];
+        _collectionView.showsVerticalScrollIndicator = NO;
+        _collectionView.showsHorizontalScrollIndicator = NO;
+        _collectionView.pagingEnabled = YES;
+        _collectionView.delegate = self;
+        _collectionView.dataSource = self;
+        [_collectionView registerClass:[JJAutoScrollViewCell class] forCellWithReuseIdentifier:@"JJAutoScrollViewCell"];
+    }
+    return _collectionView;
+}
+/** 页码控制 */
 - (UIPageControl *)pageControl
 {
-    if(_pageControl == nil)
-    {
-        _pageControl = [[UIPageControl alloc]init];
+    if(!_pageControl){
+        _pageControl = [[UIPageControl alloc] init];
         _pageControl.pageIndicatorTintColor = [UIColor grayColor];
-        _pageControl.currentPageIndicatorTintColor = [UIColor redColor];
+        _pageControl.currentPageIndicatorTintColor = [UIColor blueColor];
         _pageControl.currentPage = 0;
-        _pageControl.numberOfPages = self.totalPagesCount;
     }
     return _pageControl;
 }
-
-//scrollView
-- (UIScrollView *)scrollView
+/** 乘数 */
+- (NSInteger)multiplier {
+    return 100000;
+}
+/** 定时器 */
+- (NSTimer *)animationTimer
 {
-    if(_scrollView == nil)
-    {
-        _scrollView = [[UIScrollView alloc] initWithFrame:self.bounds];
-        _scrollView.showsVerticalScrollIndicator = NO;
-        _scrollView.showsHorizontalScrollIndicator = NO;
-        _scrollView.pagingEnabled = YES;
-        _scrollView.autoresizingMask = 0xFF;
-        _scrollView.contentMode = UIViewContentModeCenter;
-        _scrollView.delegate = self;
-        _scrollView.backgroundColor = [UIColor whiteColor];
+    if(!_animationTimer){
+        _animationTimer = [NSTimer scheduledTimerWithTimeInterval:self.animationDuration target:self selector:@selector(animationTimerDidFired:) userInfo:nil repeats:YES];
+        [[NSRunLoop mainRunLoop] addTimer:_animationTimer forMode:NSRunLoopCommonModes];
+        [self pasueTimer:_animationTimer];
     }
-    return _scrollView;
+    return _animationTimer;
 }
-//contentViews
-- (NSMutableArray *)contentViews
+- (void)animationTimerDidFired:(NSTimer *)timer {
+    [self.collectionView setContentOffset:CGPointMake(self.collectionView.contentOffset.x + CGRectGetWidth(self.collectionView.frame), 0) animated:YES];
+}
+/** 数据源 */
+- (NSMutableArray *)dataArray
 {
-    if(_contentViews == nil)
-    {
-        _contentViews = [[NSMutableArray alloc] init];
+    if(!_dataArray){
+        _dataArray = [NSMutableArray array];
     }
-    return _contentViews;
+    return _dataArray;
 }
-#pragma mark - setter
-- (void)setPageControlHidden:(BOOL)pageControlHidden {
-    _pageControlHidden = pageControlHidden;
-    self.pageControl.hidden = pageControlHidden;
+#pragma mark - 代理UICollectionViewDelegate,UICollectionViewDataSource
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
+    if (self.totalPageCount <= 1) return self.totalPageCount;
+    return self.totalPageCount * self.multiplier;
 }
-- (void)setAnimationDuration:(NSTimeInterval)animationDuration {
-    _animationDuration = animationDuration;
-    if (animationDuration > 0) {
-        self.animationTimer = [NSTimer scheduledTimerWithTimeInterval:animationDuration target:self selector:@selector(animationTimerDidFired:) userInfo:nil repeats:YES];
-        [self.animationTimer setFireDate:[NSDate distantFuture]];
-        [[NSRunLoop mainRunLoop] addTimer:self.animationTimer forMode:NSRunLoopCommonModes];
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
+    JJAutoScrollViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"JJAutoScrollViewCell" forIndexPath:indexPath];
+    if (self.totalPageCount > 0) {
+        cell.showView = self.dataArray[indexPath.row % self.totalPageCount];
     }
+    return cell;
 }
-- (void)setJJPageControlPosition:(JJPageControlPosition)JJPageControlPosition {
-    _JJPageControlPosition = JJPageControlPosition;
-}
-- (void)setCurrentPageIndicatorTintColor:(UIColor *)currentPageIndicatorTintColor {
-    _currentPageIndicatorTintColor  = currentPageIndicatorTintColor;
-    self.pageControl.currentPageIndicatorTintColor = currentPageIndicatorTintColor;
-}
-- (void)setPageIndicatorTintColor:(UIColor *)pageIndicatorTintColor {
-    _pageIndicatorTintColor = pageIndicatorTintColor;
-    self.pageControl.pageIndicatorTintColor = pageIndicatorTintColor;
-}
-- (void)setDataSource:(id<JJAutoScrollViewDataSource>)dataSource
-{
-    _dataSource = dataSource;
-    
-    self.totalPagesCount = [self.dataSource numberOfPagesInJJAutoScrollView:self];
-    
-    [self configContentViews];
-    
-    [self reconfig];
-    
-}
-- (void)setNumberOfPages:(NSInteger (^)(void))numberOfPages
-{
-    self.totalPagesCount = numberOfPages();
-    
-    [self reconfig];
-}
-
-#pragma mark - 私有方法
-
-- (void)reconfig
-{
-    self.currentPageIndex = 0;
-    if(self.totalPagesCount > 1)
-    {
-        [self addSubview:self.pageControl];
-        self.scrollView.contentOffset = CGPointMake(CGRectGetWidth(self.scrollView.frame), 0);
-        self.scrollView.contentSize = CGSizeMake(3 * CGRectGetWidth(self.scrollView.frame), CGRectGetHeight(self.scrollView.frame));
-        
-        [self configContentViews];
-        
-        [self.animationTimer setFireDate:[NSDate dateWithTimeIntervalSinceNow:self.animationDuration]];
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    if (self.delegate && [self.delegate respondsToSelector:@selector(autoScrollView:didSelectScrollViewAtIndex:)]) {
+        [self.delegate autoScrollView:self didSelectScrollViewAtIndex:indexPath.row % self.totalPageCount];
     }
-    else if (self.totalPagesCount == 1)
-    {
-        UIView *contentView = nil;
-        if(self.fetchContentViewAtIndex)
-        {
-            contentView = self.fetchContentViewAtIndex(0);
-        }
-        if([self.dataSource respondsToSelector:@selector(autoScrollView:contentViewAtIndex:)])
-        {
-            contentView = [self.dataSource autoScrollView:self contentViewAtIndex:0];
-        }
-        contentView.userInteractionEnabled = YES;
-        contentView.frame = self.scrollView.bounds;
-        [self.scrollView addSubview:contentView];
-        
-        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(contentViewTap:)];
-        [contentView addGestureRecognizer:tap];
-    }
-}
-//配置contetnView
-- (void)configContentViews
-{
-    //移除掉之前的三个view
-    [self.scrollView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
-    
-    [self.contentViews removeAllObjects];
-    //重新添加三个view
-    
-    NSInteger previousPageIndex = [self getAndJudgeIndexWithIndex:self.currentPageIndex - 1];
-    NSInteger nextPageIndex = [self getAndJudgeIndexWithIndex:self.currentPageIndex + 1];
-    if (self.contentViews == nil)
-    {
-        self.contentViews = [@[] mutableCopy];
-    }
-    if(self.fetchContentViewAtIndex)
-    {
-        [self.contentViews addObject:self.fetchContentViewAtIndex(previousPageIndex)];
-        [self.contentViews addObject:self.fetchContentViewAtIndex(self.currentPageIndex)];
-        [self.contentViews addObject:self.fetchContentViewAtIndex(nextPageIndex)];
-    }
-    if([self.dataSource respondsToSelector:@selector(autoScrollView:contentViewAtIndex:)])
-    {
-        [self.contentViews addObject:[self.dataSource autoScrollView:self contentViewAtIndex:previousPageIndex]];
-        [self.contentViews addObject:[self.dataSource autoScrollView:self contentViewAtIndex:self.currentPageIndex]];
-        [self.contentViews addObject:[self.dataSource autoScrollView:self contentViewAtIndex:nextPageIndex]];
-    }
-
-    //重新计算三个view的坐标
-    NSInteger counter = 0;
-    for (UIView *contentView in self.contentViews)
-    {
-        contentView.userInteractionEnabled = YES;
-        UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(contentViewTap:)];
-        [contentView addGestureRecognizer:tapGesture];
-        CGRect rightRect = contentView.frame;
-        rightRect.size = CGSizeMake(CGRectGetWidth(self.scrollView.frame), CGRectGetHeight(self.scrollView.frame));
-        rightRect.origin = CGPointMake(CGRectGetWidth(self.scrollView.frame) * (counter ++), 0);
-        contentView.frame = rightRect;
-        [self.scrollView addSubview:contentView];
-    }
-    [self.scrollView setContentOffset:CGPointMake(CGRectGetWidth(self.scrollView.frame), 0)];
-}
-//判断越界问题
-- (NSInteger)getAndJudgeIndexWithIndex:(NSInteger)index
-{
-    if(index == -1)//左边越界 选择最后一个
-    {
-        return self.totalPagesCount-1;
-    }
-    if(index == self.totalPagesCount)//右边越界 选择第0个
-    {
-        return 0;
-    }
-    return index;
-}
-#pragma mark - 点击事件
-- (void)contentViewTap:(UITapGestureRecognizer *)tap
-{
-    if(self.delegate && [self.delegate respondsToSelector:@selector(autoScrollView:contentViewAtIndex:)])
-    {
-        [self.delegate autoScrollView:self didSelectScrollViewAtIndex:self.currentPageIndex];
-        return;
-    }
-    !self.didSelectContentViewAtIndex ? : self.didSelectContentViewAtIndex(self.currentPageIndex);
-}
-#pragma mark - 定时器
-- (void)animationTimerDidFired:(NSTimer *)timer
-{
-    [self.scrollView setContentOffset:CGPointMake(self.scrollView.contentOffset.x+CGRectGetWidth(self.scrollView.frame), 0) animated:YES];
 }
 #pragma mark - UIScrollViewDelegate
-- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
-{
-    [self.animationTimer setFireDate:[NSDate distantFuture]];
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    if (self.animationDuration > 0) [self pasueTimer:self.animationTimer];
 }
-
-- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
-{
-    [self.animationTimer setFireDate:[NSDate dateWithTimeIntervalSinceNow:self.animationDuration]];
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (self.animationDuration > 0) [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
 }
-//滑动的过程中
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
-{
-    CGFloat contentOffsetX = scrollView.contentOffset.x;
-    
-    if(contentOffsetX <= 0)
-    {
-        self.currentPageIndex = [self getAndJudgeIndexWithIndex:self.currentPageIndex - 1];
-        [self configContentViews];
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    NSInteger index = (NSInteger)(scrollView.contentOffset.x / CGRectGetWidth(scrollView.frame)) % self.totalPageCount;
+    self.pageControl.currentPage = index;
+    // 判断第一张/最后一张 跳到中间
+    if (scrollView.contentOffset.x == 0 || scrollView.contentOffset.x == CGRectGetWidth(scrollView.frame) * (self.totalPageCount * self.multiplier - 1)) {
+        [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(scrollView.frame) * self.totalPageCount * self.multiplier / 2, 0) animated:NO];
     }
-    if(contentOffsetX >= 2*CGRectGetWidth(self.scrollView.frame))
-    {
-        self.currentPageIndex = [self getAndJudgeIndexWithIndex:self.currentPageIndex + 1];
-        [self configContentViews];
-    }
-    self.pageControl.currentPage = self.currentPageIndex;
-    //判断两张图片的时候 复用改变内存
-    if(self.totalPagesCount == 2 && self.contentViews.count)
-    {
-        if(contentOffsetX < CGRectGetWidth(self.scrollView.frame))
-        {
-            UIView *contentView = self.contentViews[0];
-            CGRect rect = contentView.frame;
-            rect.origin.x = 0;
-            contentView.frame = rect;
-        }
-        if(contentOffsetX > CGRectGetWidth(self.scrollView.frame))
-        {
-            UIView *contentView = self.contentViews[0];
-            CGRect rect = contentView.frame;
-            rect.origin.x = CGRectGetWidth(self.scrollView.frame)*2;
-            contentView.frame = rect;
-        }
-    }
-}
-- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
-{
-    [scrollView setContentOffset:CGPointMake(CGRectGetWidth(scrollView.frame), 0) animated:YES];
     if (self.delegate && [self.delegate respondsToSelector:@selector(autoScrollView:showScrollViewAtIndex:)]) {
-        [self.delegate autoScrollView:self showScrollViewAtIndex:self.currentPageIndex];
+        [self.delegate autoScrollView:self showScrollViewAtIndex:self.pageControl.currentPage];
     }
 }
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
     [self scrollViewDidEndDecelerating:scrollView];
 }
+#pragma mark - setter
+- (void)setDataSource:(id<JJAutoScrollViewDataSource>)dataSource {
+    _dataSource = dataSource;
+    
+    self.totalPageCount = [self.dataSource numberOfPagesInJJAutoScrollView:self];
+    
+    [self.dataArray removeAllObjects];
+    for (NSInteger i = 0;i < self.totalPageCount;i++) {
+        UIView *view = [self.dataSource autoScrollView:self contentViewAtIndex:i];
+        [self.dataArray addObject:view];
+    }
+    if (self.totalPageCount <= 1) {
+        self.collectionView.scrollEnabled = NO;
+        self.pageControl.hidden = YES;
+        [self.collectionView setContentOffset:CGPointMake(0, 0) animated:YES];
+        [self pasueTimer:self.animationTimer];
+    } else {
+        self.collectionView.pagingEnabled = YES;
+        //设置页码控制
+        self.pageControl.hidden = NO;
+        self.pageControl.numberOfPages = self.totalPageCount;
+        [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(self.collectionView.frame) * (self.totalPageCount * self.multiplier / 2), 0) animated:NO];
+        [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
+    }
+    
+    [self.collectionView reloadData];
+}
+- (void)setAnimationDuration:(NSTimeInterval)animationDuration {
+    _animationDuration = animationDuration;
+    if (animationDuration > 0 && self.totalPageCount > 1) {
+        [self resumeTimer:self.animationTimer];
+    } else {
+        [self pasueTimer:self.animationTimer];
+    }
+}
+- (void)setPageControlPosition:(JJPageControlPosition)pageControlPosition{
+    _pageControlPosition = pageControlPosition;
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+}
+- (void)setPageControlHidden:(BOOL)pageControlHidden {
+    _pageControlHidden = pageControlHidden;
+    self.pageControl.hidden = pageControlHidden;
+}
+- (void)setPageIndicatorTintColor:(UIColor *)pageIndicatorTintColor {
+    _pageIndicatorTintColor = pageIndicatorTintColor;
+    self.pageControl.pageIndicatorTintColor = pageIndicatorTintColor;
+}
+- (void)setCurrentPageIndicatorTintColor:(UIColor *)currentPageIndicatorTintColor {
+    _currentPageIndicatorTintColor = currentPageIndicatorTintColor;
+    self.pageControl.currentPageIndicatorTintColor = currentPageIndicatorTintColor;
+}
+#pragma mark - 定时器function
+//暂停
+- (void)pasueTimer:(NSTimer *)timer {
+    if (!timer.valid) return;
+    timer.fireDate = [NSDate distantFuture];
+}
+//重启
+- (void)resumeTimer:(NSTimer *)timer {
+    if (!timer.valid) return;
+    timer.fireDate = [NSDate date];
+}
+//经过timeInterval重启
+- (void)resumeTimer:(NSTimer *)timer afterTimeInterval:(NSTimeInterval)timeInterval {
+    if (!timer.valid) return;
+    timer.fireDate = [NSDate dateWithTimeIntervalSinceNow:timeInterval];
+}
 @end
 
+#pragma mark -
+#pragma mark - collectionViewCell
+@interface JJAutoScrollViewCell()
 
+@end
 
+@implementation JJAutoScrollViewCell
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+    }
+    return self;
+}
+
+- (void)awakeFromNib {
+    [super awakeFromNib];
+}
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    self.showView.frame = self.bounds;
+}
+- (void)setShowView:(UIView *)showView {
+    _showView = showView;
+    [self.contentView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self.contentView addSubview:showView];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+}
+
+@end
 
 
 
