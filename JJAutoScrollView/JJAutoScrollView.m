@@ -46,14 +46,13 @@
 }
 - (void)setup {
     self.autoresizesSubviews = YES;
-    self.totalPageCount = 0;
-    self.animationDuration = 3.0;
+    
     [self addSubview:self.collectionView];
     [self addSubview:self.pageControl];
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    
+    NSLog(@"layoutSubviews");
     self.layout.itemSize = self.bounds.size;
     self.collectionView.collectionViewLayout = self.layout;
     self.collectionView.frame = self.bounds;
@@ -105,6 +104,7 @@
     }
     self.pageControl.frame = CGRectMake(x, y, width, height);
     [self resumeTimer:self.animationTimer];
+    [self.collectionView reloadData];
 }
 #pragma mark - 懒加载
 /** layout */
@@ -153,6 +153,7 @@
 - (NSTimer *)animationTimer
 {
     if(!_animationTimer){
+        _animationDuration = 3.0;
         _animationTimer = [NSTimer scheduledTimerWithTimeInterval:self.animationDuration target:self selector:@selector(animationTimerDidFired:) userInfo:nil repeats:YES];
         [[NSRunLoop mainRunLoop] addTimer:_animationTimer forMode:NSRunLoopCommonModes];
         [self pasueTimer:_animationTimer];
@@ -195,6 +196,7 @@
     if (self.animationDuration > 0) [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
 }
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    if (self.totalPageCount < 1) return;
     NSInteger index = (NSInteger)(scrollView.contentOffset.x / CGRectGetWidth(scrollView.frame)) % self.totalPageCount;
     self.pageControl.currentPage = index;
     // 判断第一张/最后一张 跳到中间
@@ -232,7 +234,7 @@
         [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(self.collectionView.frame) * (self.totalPageCount * self.multiplier / 2), 0) animated:NO];
         [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
     }
-    
+    self.totalPageCount = self.dataArray.count;
     [self.collectionView reloadData];
 }
 - (void)setAnimationDuration:(NSTimeInterval)animationDuration {
