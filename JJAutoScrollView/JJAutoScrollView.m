@@ -52,7 +52,7 @@
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    NSLog(@"layoutSubviews");
+
     self.layout.itemSize = self.bounds.size;
     self.collectionView.collectionViewLayout = self.layout;
     self.collectionView.frame = self.bounds;
