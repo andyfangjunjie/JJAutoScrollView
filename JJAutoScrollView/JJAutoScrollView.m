@@ -46,13 +46,13 @@
 }
 - (void)setup {
     self.autoresizesSubviews = YES;
-    
+    [self.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
     [self addSubview:self.collectionView];
     [self addSubview:self.pageControl];
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-
+    
     self.layout.itemSize = self.bounds.size;
     self.collectionView.collectionViewLayout = self.layout;
     self.collectionView.frame = self.bounds;
@@ -105,6 +105,10 @@
     self.pageControl.frame = CGRectMake(x, y, width, height);
     [self resumeTimer:self.animationTimer];
     [self.collectionView reloadData];
+}
+/** 刷新 */
+- (void)reloadData {
+    [self setupData];
 }
 #pragma mark - 懒加载
 /** layout */
@@ -214,28 +218,7 @@
 - (void)setDataSource:(id<JJAutoScrollViewDataSource>)dataSource {
     _dataSource = dataSource;
     
-    self.totalPageCount = [self.dataSource numberOfPagesInJJAutoScrollView:self];
-    
-    [self.dataArray removeAllObjects];
-    for (NSInteger i = 0;i < self.totalPageCount;i++) {
-        UIView *view = [self.dataSource autoScrollView:self contentViewAtIndex:i];
-        [self.dataArray addObject:view];
-    }
-    if (self.totalPageCount <= 1) {
-        self.collectionView.scrollEnabled = NO;
-        self.pageControl.hidden = YES;
-        [self.collectionView setContentOffset:CGPointMake(0, 0) animated:YES];
-        [self pasueTimer:self.animationTimer];
-    } else {
-        self.collectionView.pagingEnabled = YES;
-        //设置页码控制
-        self.pageControl.hidden = NO;
-        self.pageControl.numberOfPages = self.totalPageCount;
-        [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(self.collectionView.frame) * (self.totalPageCount * self.multiplier / 2), 0) animated:NO];
-        [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
-    }
-    self.totalPageCount = self.dataArray.count;
-    [self.collectionView reloadData];
+    [self setupData];
 }
 - (void)setAnimationDuration:(NSTimeInterval)animationDuration {
     _animationDuration = animationDuration;
@@ -261,6 +244,33 @@
 - (void)setCurrentPageIndicatorTintColor:(UIColor *)currentPageIndicatorTintColor {
     _currentPageIndicatorTintColor = currentPageIndicatorTintColor;
     self.pageControl.currentPageIndicatorTintColor = currentPageIndicatorTintColor;
+}
+#pragma mark - 获取数据源
+- (void)setupData {
+    self.totalPageCount = [self.dataSource numberOfPagesInJJAutoScrollView:self];
+    
+    [self.dataArray removeAllObjects];
+    for (NSInteger i = 0;i < self.totalPageCount;i++) {
+        UIView *view = [self.dataSource autoScrollView:self contentViewAtIndex:i];
+        [self.dataArray addObject:view];
+    }
+    if (self.totalPageCount <= 1) {
+        self.collectionView.scrollEnabled = NO;
+        self.collectionView.pagingEnabled = NO;
+        self.pageControl.hidden = YES;
+        [self.collectionView setContentOffset:CGPointMake(0, 0) animated:YES];
+        [self pasueTimer:self.animationTimer];
+    } else {
+        self.collectionView.scrollEnabled = YES;
+        self.collectionView.pagingEnabled = YES;
+        //设置页码控制
+        self.pageControl.hidden = NO;
+        self.pageControl.numberOfPages = self.totalPageCount;
+        [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(self.collectionView.frame) * (self.totalPageCount * self.multiplier / 2), 0) animated:NO];
+        [self resumeTimer:self.animationTimer afterTimeInterval:self.animationDuration];
+    }
+    self.totalPageCount = self.dataArray.count;
+    [self.collectionView reloadData];
 }
 #pragma mark - 定时器function
 //暂停

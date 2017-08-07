@@ -92,6 +92,9 @@ typedef NS_ENUM(NSInteger, JJPageControlPosition) {
 /** 未选中颜色 */
 @property (nonatomic,strong) UIColor *pageIndicatorTintColor;
 
+/** 刷新 */
+- (void)reloadData;
+
 @end
 
 #pragma mark - cell
