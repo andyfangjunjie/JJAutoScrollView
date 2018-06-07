@@ -157,7 +157,7 @@
 - (NSTimer *)animationTimer
 {
     if(!_animationTimer){
-        _animationDuration = 3.0;
+        if (_animationDuration == 0) _animationDuration = 3;
         _animationTimer = [NSTimer scheduledTimerWithTimeInterval:self.animationDuration target:self selector:@selector(animationTimerDidFired:) userInfo:nil repeats:YES];
         [[NSRunLoop mainRunLoop] addTimer:_animationTimer forMode:NSRunLoopCommonModes];
         [self pasueTimer:_animationTimer];
@@ -165,7 +165,11 @@
     return _animationTimer;
 }
 - (void)animationTimerDidFired:(NSTimer *)timer {
-    [self.collectionView setContentOffset:CGPointMake(self.collectionView.contentOffset.x + CGRectGetWidth(self.collectionView.frame), 0) animated:YES];
+    if (self.totalPageCount <= 1) {
+        [self.collectionView setContentOffset:CGPointMake(0, 0) animated:YES];
+    } else {
+        [self.collectionView setContentOffset:CGPointMake(self.collectionView.contentOffset.x + CGRectGetWidth(self.collectionView.frame), 0) animated:YES];
+    }
 }
 /** 数据源 */
 - (NSMutableArray *)dataArray
@@ -223,6 +227,8 @@
 - (void)setAnimationDuration:(NSTimeInterval)animationDuration {
     _animationDuration = animationDuration;
     if (animationDuration > 0 && self.totalPageCount > 1) {
+        [self.animationTimer invalidate];
+        self.animationTimer = nil;
         [self resumeTimer:self.animationTimer];
     } else {
         [self pasueTimer:self.animationTimer];
@@ -264,6 +270,7 @@
         self.collectionView.scrollEnabled = YES;
         self.collectionView.pagingEnabled = YES;
         //设置页码控制
+        self.pageControl.currentPage = 0;
         self.pageControl.hidden = NO;
         self.pageControl.numberOfPages = self.totalPageCount;
         [self.collectionView setContentOffset:CGPointMake(CGRectGetWidth(self.collectionView.frame) * (self.totalPageCount * self.multiplier / 2), 0) animated:NO];

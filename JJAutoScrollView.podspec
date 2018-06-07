@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
 s.name = 'JJAutoScrollView'
-s.version = '0.0.5'
+s.version = '0.0.6'
 s.platform = :ios, '7.0'
 s.summary = '一个很好用banner滚动控件'
 s.homepage = 'https://github.com/andyfangjunjie/JJAutoScrollView'
