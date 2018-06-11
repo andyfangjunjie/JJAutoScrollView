@@ -64,37 +64,31 @@
     CGFloat x = 0;
     CGFloat y = 0;
     switch (self.pageControlPosition) {
-        case JJPageControlPositionBottomCenter:
-        {
+        case JJPageControlPositionBottomCenter: {
             x = (superViewWidth - width) / 2;
             y = superViewHeight - height;
             break;
         }
-        case JJPageControlPositionBottomLeft:
-        {
+        case JJPageControlPositionBottomLeft: {
             y = superViewHeight - height;
             break;
         }
-        case JJPageControlPositionBottomRight:
-        {
+        case JJPageControlPositionBottomRight: {
             x = superViewWidth - width;
             y = superViewHeight - height;
             break;
         }
-        case JJPageControlPositionTopCenter:
-        {
+        case JJPageControlPositionTopCenter: {
             x = (superViewWidth - width) / 2;
             y = 0;
             break;
         }
-        case JJPageControlPositionTopLeft:
-        {
+        case JJPageControlPositionTopLeft: {
             x = 0;
             y = 0;
             break;
         }
-        case JJPageControlPositionTopRight:
-        {
+        case JJPageControlPositionTopRight: {
             x = superViewWidth - width;
             y = 0;
             break;
@@ -112,9 +106,8 @@
 }
 #pragma mark - 懒加载
 /** layout */
-- (UICollectionViewFlowLayout *)layout
-{
-    if(!_layout){
+- (UICollectionViewFlowLayout *)layout {
+    if(!_layout) {
         _layout = [[UICollectionViewFlowLayout alloc] init];
         _layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
         _layout.itemSize = self.bounds.size;
@@ -124,9 +117,8 @@
     return _layout;
 }
 /** collectionView */
-- (UICollectionView *)collectionView
-{
-    if(!_collectionView){
+- (UICollectionView *)collectionView {
+    if(!_collectionView) {
         _collectionView = [[UICollectionView alloc] initWithFrame:self.bounds collectionViewLayout:self.layout];
         _collectionView.backgroundColor = [UIColor clearColor];
         _collectionView.showsVerticalScrollIndicator = NO;
@@ -139,9 +131,8 @@
     return _collectionView;
 }
 /** 页码控制 */
-- (UIPageControl *)pageControl
-{
-    if(!_pageControl){
+- (UIPageControl *)pageControl {
+    if(!_pageControl) {
         _pageControl = [[UIPageControl alloc] init];
         _pageControl.pageIndicatorTintColor = [UIColor grayColor];
         _pageControl.currentPageIndicatorTintColor = [UIColor blueColor];
@@ -154,9 +145,8 @@
     return 100000;
 }
 /** 定时器 */
-- (NSTimer *)animationTimer
-{
-    if(!_animationTimer){
+- (NSTimer *)animationTimer {
+    if(!_animationTimer) {
         if (_animationDuration == 0) _animationDuration = 3;
         _animationTimer = [NSTimer scheduledTimerWithTimeInterval:self.animationDuration target:self selector:@selector(animationTimerDidFired:) userInfo:nil repeats:YES];
         [[NSRunLoop mainRunLoop] addTimer:_animationTimer forMode:NSRunLoopCommonModes];
@@ -172,9 +162,8 @@
     }
 }
 /** 数据源 */
-- (NSMutableArray *)dataArray
-{
-    if(!_dataArray){
+- (NSMutableArray *)dataArray {
+    if(!_dataArray) {
         _dataArray = [NSMutableArray array];
     }
     return _dataArray;
@@ -278,6 +267,9 @@
     }
     self.totalPageCount = self.dataArray.count;
     [self.collectionView reloadData];
+    
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 #pragma mark - 定时器function
 //暂停
